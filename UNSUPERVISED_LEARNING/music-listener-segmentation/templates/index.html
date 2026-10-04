@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Listener Segmentation | 3D Studio</title>
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Three.js for 3D Graphics -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #0a0c10;
+            --accent-green: #1db954;
+            --accent-cyan: #00f2fe;
+            --glass-bg: rgba(18, 24, 38, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.15);
+            --text-main: #ffffff;
+            --text-sub: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 3D WebGL Background Canvas */
+        #webgl-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        /* App Main Wrapper */
+        .app-wrapper {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 1050px;
+            padding: 30px 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: center;
+        }
+
+        @media (max-width: 850px) {
+            .app-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Glass Panel Styling */
+        .glass-card {
+            background: var(--glass-bg);
+            backdrop-filter: blur(25px);
+            -webkit-backdrop-filter: blur(25px);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 36px 32px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Header Section */
+        .brand-header {
+            margin-bottom: 24px;
+        }
+
+        .brand-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            background: rgba(29, 185, 84, 0.15);
+            border: 1px solid rgba(29, 185, 84, 0.4);
+            border-radius: 30px;
+            color: var(--accent-green);
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .brand-title {
+            font-size: 30px;
+            font-weight: 800;
+            color: #ffffff;
+            margin-bottom: 8px;
+            line-height: 1.2;
+        }
+
+        .brand-desc {
+            color: var(--text-sub);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Form Inputs - Full Visibility Layout */
+        .input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 480px) {
+            .input-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-sub);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .input-group label i {
+            color: var(--accent-green);
+        }
+
+        .input-field-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-field-wrapper i {
+            position: absolute;
+            left: 14px;
+            color: var(--text-sub);
+            font-size: 14px;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 14px 14px 42px;
+            background: rgba(255, 255, 255, 0.07);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 12px;
+            color: var(--text-main);
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-group input:focus {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: var(--accent-green);
+            box-shadow: 0 0 16px rgba(29, 185, 84, 0.35);
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        /* Predict Action Button */
+        .btn-predict {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 14px;
+            background: var(--accent-green);
+            color: #000;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 10px 25px rgba(29, 185, 84, 0.35);
+            transition: all 0.2s ease;
+        }
+
+        .btn-predict:hover {
+            background: #1ed760;
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(29, 185, 84, 0.5);
+        }
+
+        /* Right Stage Card */
+        .stage-card {
+            min-height: 420px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .result-container {
+            width: 100%;
+        }
+
+        .result-badge {
+            background: rgba(29, 185, 84, 0.12);
+            border: 1.5px solid var(--accent-green);
+            padding: 24px 20px;
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease;
+        }
+
+        .result-badge .sub-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--text-sub);
+            margin-bottom: 8px;
+        }
+
+        .result-badge .segment-title {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--accent-green);
+            text-shadow: 0 0 15px rgba(29, 185, 84, 0.4);
+        }
+
+        .placeholder-text {
+            color: var(--text-sub);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(15px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 3D Interactive Canvas Background -->
+    <canvas id="webgl-bg"></canvas>
+
+    <div class="app-wrapper">
+        <!-- Input Form Section -->
+        <div class="glass-card">
+            <div class="brand-header">
+                <div class="brand-badge">
+                    <i class="fa-solid fa-compact-disc fa-spin"></i> ML Intelligence
+                </div>
+                <h1 class="brand-title">Music Segmenter</h1>
+                <p class="brand-desc">Input listener behavior metrics to compute the unsupervised cluster group.</p>
+            </div>
+
+            <form action="/predict" method="POST">
+                <div class="input-grid">
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-clock"></i> Weekly Hours</label>
+                        <div class="input-field-wrapper">
+                            <i class="fa-solid fa-headphones"></i>
+                            <input type="number" step="any" name="listening_hours_per_week" required placeholder="e.g. 24">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-music"></i> Songs / Day</label>
+                        <div class="input-field-wrapper">
+                            <i class="fa-solid fa-list-ol"></i>
+                            <input type="number" step="any" name="songs_per_day" required placeholder="e.g. 50">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-forward"></i> Skip Rate (0 - 1)</label>
+                        <div class="input-field-wrapper">
+                            <i class="fa-solid fa-forward-step"></i>
+                            <input type="number" step="any" name="skip_rate" min="0" max="1" required placeholder="e.g. 0.15">
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label><i class="fa-solid fa-folder-plus"></i> Playlists</label>
+                        <div class="input-field-wrapper">
+                            <i class="fa-solid fa-lines-leaning"></i>
+                            <input type="number" step="any" name="playlist_count" required placeholder="e.g. 8">
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn-predict">
+                    <span>Analyze Listener Segment</span>
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- Right Visual Display Stage -->
+        <div class="glass-card stage-card">
+            {% if segment %}
+            <div class="result-container">
+                <div class="result-badge">
+                    <div class="sub-title">Predicted Cluster Group</div>
+                    <div class="segment-title">{{ segment }}</div>
+                </div>
+            </div>
+            {% else %}
+            <p class="placeholder-text">Enter listener metrics on the left to activate 3D audio segment analysis.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Full 3D Vinyl & Particle WebGL Engine -->
+    <script>
+        const canvas = document.getElementById('webgl-bg');
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        // Create Interactive 3D Vinyl Record
+        const vinylGroup = new THREE.Group();
+
+        // Vinyl Disc
+        const discGeo = new THREE.CylinderGeometry(2.8, 2.8, 0.08, 64);
+        const discMat = new THREE.MeshStandardMaterial({
+            color: 0x111111,
+            roughness: 0.3,
+            metalness: 0.8
+        });
+        const vinylDisc = new THREE.Mesh(discGeo, discMat);
+        vinylGroup.add(vinylDisc);
+
+        // Center Green Label
+        const labelGeo = new THREE.CylinderGeometry(1.0, 1.0, 0.09, 32);
+        const labelMat = new THREE.MeshStandardMaterial({
+            color: 0x1db954,
+            roughness: 0.2,
+            metalness: 0.1
+        });
+        const centerLabel = new THREE.Mesh(labelGeo, labelMat);
+        vinylGroup.add(centerLabel);
+
+        // Center Hole
+        const holeGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.1, 16);
+        const holeMat = new THREE.MeshBasicMaterial({ color: 0x0a0c10 });
+        const centerHole = new THREE.Mesh(holeGeo, holeMat);
+        vinylGroup.add(centerHole);
+
+        scene.add(vinylGroup);
+
+        // Particle Visualizer Field
+        const particlesCount = 700;
+        const posArray = new Float32Array(particlesCount * 3);
+
+        for(let i = 0; i < particlesCount * 3; i += 3) {
+            posArray[i] = (Math.random() - 0.5) * 18;
+            posArray[i+1] = (Math.random() - 0.5) * 18;
+            posArray[i+2] = (Math.random() - 0.5) * 18;
+        }
+
+        const particlesGeo = new THREE.BufferGeometry();
+        particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const particlesMat = new THREE.PointsMaterial({
+            size: 0.035,
+            color: 0x00f2fe,
+            transparent: true,
+            opacity: 0.6
+        });
+
+        const particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+        scene.add(particlesMesh);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+        scene.add(ambientLight);
+
+        const pointLight1 = new THREE.PointLight(0x1db954, 3, 50);
+        pointLight1.position.set(5, 5, 5);
+        scene.add(pointLight1);
+
+        const pointLight2 = new THREE.PointLight(0x00f2fe, 3, 50);
+        pointLight2.position.set(-5, -5, -5);
+        scene.add(pointLight2);
+
+        // Position camera to align vinyl behind the right stage card
+        function updateCameraPosition() {
+            if (window.innerWidth > 850) {
+                camera.position.set(2.2, 0.5, 6.5);
+            } else {
+                camera.position.set(0, -1.2, 7.5);
+            }
+        }
+        updateCameraPosition();
+
+        // Mouse Interactivity
+        let mouseX = 0;
+        let mouseY = 0;
+
+        window.addEventListener('mousemove', (e) => {
+            mouseX = (e.clientX / window.innerWidth) - 0.5;
+            mouseY = (e.clientY / window.innerHeight) - 0.5;
+        });
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            vinylGroup.rotation.y += 0.012;
+            vinylGroup.rotation.x = 0.5 + (mouseY * 0.2);
+            vinylGroup.rotation.z = mouseX * 0.2;
+
+            particlesMesh.rotation.y -= 0.0008;
+            particlesMesh.rotation.x += 0.0004;
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Responsive Resize Handler
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCameraPosition();
+        });
+    </script>
+</body>
+</html>
